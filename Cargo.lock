@@ -97,6 +97,7 @@ name = "axum_template"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "rand",
  "reqwest",
  "rusqlite",
  "serde",
