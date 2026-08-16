@@ -1,7 +1,10 @@
-use axum::{Router, routing::get};
-use reqwest::header;
+use axum::{Json, Router, extract::State, routing::get};
+use reqwest::{StatusCode, header};
 
-use crate::chess::{api::random_game, stats};
+use crate::{
+    chess::{api::random_game, game::Game, stats},
+    state::AppState,
+};
 
 mod chess;
 mod state;
@@ -10,12 +13,14 @@ mod state;
 async fn main() {
     tracing_subscriber::fmt::init();
     let client = init_client();
+    let state = AppState {
+        http: client.clone(),
+    };
 
-    println!("Hello, world!");
-    stats("tenderllama", client.clone()).await;
-    random_game("tenderllama", client.clone()).await;
-
-    let app = Router::new().route("/", get(root));
+    let app = Router::new()
+        .route("/", get(root))
+        .route("/game", get(game))
+        .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
@@ -28,6 +33,25 @@ async fn main() {
 async fn root() -> &'static str {
     tracing::info!("/ GET");
     "Hello world"
+}
+
+async fn game(State(state): State<AppState>) -> Result<Json<Game>, StatusCode> {
+    tracing::info!("/game GET");
+    const MAX_ATTEMPTS: u8 = 3;
+    let mut last_err = None;
+
+    for attempt in 1..=MAX_ATTEMPTS {
+        match random_game("tenderllam", state.http.clone()).await {
+            Ok(game) => return Ok(Json(game)),
+            Err(err) => {
+                tracing::warn!("attempt {attempt}/{MAX_ATTEMPTS} failed: {err}");
+                last_err = Some(err);
+            }
+        }
+    }
+
+    tracing::error!("all {MAX_ATTEMPTS} attempts failed: {}", last_err.unwrap());
+    Err(StatusCode::BAD_GATEWAY)
 }
 
 fn init_client() -> reqwest::Client {

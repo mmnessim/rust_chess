@@ -1,4 +1,4 @@
 #[derive(Clone)]
-struct AppState {
-    http: reqwest::Client,
+pub struct AppState {
+    pub http: reqwest::Client,
 }
