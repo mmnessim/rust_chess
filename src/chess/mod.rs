@@ -1,4 +1,4 @@
 pub mod api;
 pub mod game;
 
-pub use api::stats;
+pub use api::_stats;
