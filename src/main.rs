@@ -2,7 +2,7 @@ use axum::{Json, Router, extract::State, routing::get};
 use reqwest::{StatusCode, header};
 
 use crate::{
-    chess::{api::random_game, game::Game, stats},
+    chess::{api::random_game, game::Game},
     state::AppState,
 };
 

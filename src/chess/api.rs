@@ -2,7 +2,7 @@ use rand::random_range;
 
 use crate::chess::game::{Archives, Game, ManyGames};
 
-pub async fn stats(username: &str, client: reqwest::Client) {
+pub async fn _stats(username: &str, client: reqwest::Client) {
     let url = format!("https://api.chess.com/pub/player/{username}/stats");
     if let Ok(response) = client.get(url).send().await {
         println!("{:#?}", response.text().await.unwrap());
