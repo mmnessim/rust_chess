@@ -3,7 +3,7 @@ use reqwest::{StatusCode, header};
 
 use crate::{
     chess::{api::random_game, game::Game},
-    data::db::init_db,
+    data::{db::init_db, player::Player},
     state::AppState,
 };
 
@@ -15,9 +15,7 @@ mod state;
 async fn main() {
     tracing_subscriber::fmt::init();
     let client = init_client();
-    let state = AppState {
-        http: client.clone(),
-    };
+
     let pool = match init_db().await {
         Ok(p) => p,
         Err(e) => {
@@ -26,9 +24,15 @@ async fn main() {
         }
     };
 
+    let state = AppState {
+        http: client.clone(),
+        pool: pool,
+    };
+
     let app = Router::new()
         .route("/", get(root))
         .route("/game", get(game))
+        .route("/dbtest", get(db_test))
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
@@ -60,6 +64,19 @@ async fn game(State(state): State<AppState>) -> Result<Json<Game>, StatusCode> {
     }
 
     tracing::error!("all {MAX_ATTEMPTS} attempts failed: {}", last_err.unwrap());
+    Err(StatusCode::BAD_GATEWAY)
+}
+
+async fn db_test(State(state): State<AppState>) -> Result<Json<Vec<Player>>, StatusCode> {
+    tracing::info!("/dbtest GET");
+    match sqlx::query_as::<_, Player>("SELECT * FROM players LIMIT 1")
+        .fetch_all(&state.pool)
+        .await
+    {
+        Ok(p) => return Ok(Json(p)),
+        Err(e) => tracing::error!("Error: {e}"),
+    };
+
     Err(StatusCode::BAD_GATEWAY)
 }
 
