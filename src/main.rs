@@ -3,10 +3,12 @@ use reqwest::{StatusCode, header};
 
 use crate::{
     chess::{api::random_game, game::Game},
+    data::db::init_db,
     state::AppState,
 };
 
 mod chess;
+mod data;
 mod state;
 
 #[tokio::main]
@@ -17,6 +19,7 @@ async fn main() {
         http: client.clone(),
     };
 
+    let _ = init_db();
     let app = Router::new()
         .route("/", get(root))
         .route("/game", get(game))
@@ -41,7 +44,7 @@ async fn game(State(state): State<AppState>) -> Result<Json<Game>, StatusCode> {
     let mut last_err = None;
 
     for attempt in 1..=MAX_ATTEMPTS {
-        match random_game("tenderllam", state.http.clone()).await {
+        match random_game("tenderllama", state.http.clone()).await {
             Ok(game) => return Ok(Json(game)),
             Err(err) => {
                 tracing::warn!("attempt {attempt}/{MAX_ATTEMPTS} failed: {err}");
