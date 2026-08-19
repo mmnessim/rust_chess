@@ -1,3 +1,5 @@
+use core::panic;
+
 use axum::{Json, Router, extract::State, routing::get};
 use reqwest::{StatusCode, header};
 
@@ -18,8 +20,14 @@ async fn main() {
     let state = AppState {
         http: client.clone(),
     };
+    let pool = match init_db().await {
+        Ok(p) => p,
+        Err(e) => {
+            println!("Error: {e}");
+            return;
+        }
+    };
 
-    let _ = init_db();
     let app = Router::new()
         .route("/", get(root))
         .route("/game", get(game))
