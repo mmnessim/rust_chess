@@ -1,5 +1,3 @@
-use core::panic;
-
 use axum::{Json, Router, extract::State, routing::get};
 use reqwest::{StatusCode, header};
 
