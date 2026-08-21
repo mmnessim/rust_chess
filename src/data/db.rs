@@ -3,6 +3,8 @@ use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteQueryResult},
 };
 
+use crate::data::player::Player;
+
 /// Opens (creating if necessary) the `chess.db` SQLite database and
 /// ensures the `players` table exists.
 ///
@@ -41,4 +43,19 @@ pub async fn insert(username: &str, pool: &SqlitePool) -> Result<SqliteQueryResu
         .execute(pool)
         .await?;
     Ok(x)
+}
+
+pub async fn get_random_player_from_db(pool: &SqlitePool) -> Result<Player, sqlx::Error> {
+    let player = sqlx::query_as::<_, Player>("SELECT * FROM players ORDER BY RANDOM() LIMIT 1")
+        .fetch_one(pool)
+        .await?;
+    Ok(player)
+}
+
+pub async fn set_inactive(pool: &SqlitePool, player: &Player) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE players SET active = 0 WHERE id = ?")
+        .bind(&player.id)
+        .execute(pool)
+        .await?;
+    Ok(())
 }

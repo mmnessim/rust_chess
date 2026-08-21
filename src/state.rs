@@ -6,7 +6,7 @@
 #[derive(Clone)]
 pub struct AppState {
     /// HTTP client used to call the chess.com public API.
-    pub http: reqwest::Client,
+    pub client: reqwest::Client,
     /// Connection pool for the SQLite database.
     pub pool: sqlx::SqlitePool,
 }

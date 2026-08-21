@@ -52,7 +52,10 @@ pub enum GameFetchError {
 /// Returns [`GameFetchError`] if the archive list or game list can't be
 /// fetched/parsed, if the player has no archives, or if the chosen
 /// archive turns out to be empty.
-pub async fn random_game(username: &str, client: reqwest::Client) -> Result<Game, GameFetchError> {
+pub async fn fetch_random_game_chesscom(
+    username: &str,
+    client: reqwest::Client,
+) -> Result<Game, GameFetchError> {
     let url = format!("https://api.chess.com/pub/player/{username}/games/archives");
     let archives = client
         .get(url)

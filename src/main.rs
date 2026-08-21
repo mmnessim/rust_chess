@@ -6,7 +6,7 @@ use reqwest::{StatusCode, header};
 
 use crate::{
     chess::{
-        api::{random_game, seed_db},
+        fetch::{fetch_random_game_chesscom, seed_db},
         game::Game,
     },
     data::{db::init_db, player::Player},
@@ -15,6 +15,7 @@ use crate::{
 
 mod chess;
 mod data;
+mod handlers;
 mod state;
 
 /// Initializes the DB, seeds it, and starts the Axum server on
@@ -37,14 +38,12 @@ async fn main() {
     }
 
     let state = AppState {
-        http: client.clone(),
+        client: client.clone(),
         pool: pool,
     };
 
     let app = Router::new()
-        .route("/", get(root))
-        .route("/game", get(game))
-        .route("/dbtest", get(db_test))
+        .route("/game", get(handlers::api::serve_random_game))
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
@@ -70,7 +69,7 @@ async fn game(State(state): State<AppState>) -> Result<Json<Game>, StatusCode> {
     let mut last_err = None;
 
     for attempt in 1..=MAX_ATTEMPTS {
-        match random_game("tenderllama", state.http.clone()).await {
+        match fetch_random_game_chesscom("tenderllama", state.client.clone()).await {
             Ok(game) => return Ok(Json(game)),
             Err(err) => {
                 tracing::warn!("attempt {attempt}/{MAX_ATTEMPTS} failed: {err}");
