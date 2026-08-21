@@ -9,11 +9,17 @@ use crate::{
     data::db::insert,
 };
 
+/// Response body of a chess.com "list of players" endpoint (e.g. by
+/// country or title), containing just usernames.
 #[derive(Debug, Deserialize)]
 struct PlayerList {
     players: Vec<String>,
 }
 
+/// Fetches and prints a player's stats from the chess.com API.
+///
+/// This is a debugging helper: it swallows request errors and simply
+/// prints the raw response body.
 pub async fn _stats(username: &str, client: reqwest::Client) {
     let url = format!("https://api.chess.com/pub/player/{username}/stats");
     if let Ok(response) = client.get(url).send().await {
@@ -21,18 +27,31 @@ pub async fn _stats(username: &str, client: reqwest::Client) {
     }
 }
 
+/// Errors that can occur while fetching a random game for a player.
 #[derive(Debug, thiserror::Error)]
 pub enum GameFetchError {
+    /// The underlying HTTP request failed.
     #[error("request failed: {0}")]
     Request(#[from] reqwest::Error),
+    /// The response body could not be deserialized.
     #[error("failed to parse response: {0}")]
     Parse(#[from] serde_json::Error),
+    /// The player has no monthly archives at all.
     #[error("no archives found for user")]
     NoArchives,
+    /// A randomly chosen archive contained no games.
     #[error("archive contained no games")]
     NoGames,
 }
 
+/// Picks a random monthly archive for `username`, then a random game
+/// from within it, and returns that game.
+///
+/// # Errors
+///
+/// Returns [`GameFetchError`] if the archive list or game list can't be
+/// fetched/parsed, if the player has no archives, or if the chosen
+/// archive turns out to be empty.
 pub async fn random_game(username: &str, client: reqwest::Client) -> Result<Game, GameFetchError> {
     let url = format!("https://api.chess.com/pub/player/{username}/games/archives");
     let archives = client
@@ -61,6 +80,17 @@ pub async fn random_game(username: &str, client: reqwest::Client) -> Result<Game
     Ok(games.into_iter().nth(game_num).unwrap())
 }
 
+/// Populates the `players` table from a handful of chess.com player
+/// listing endpoints (a few countries plus titled players), unless it
+/// already has rows.
+///
+/// Per-endpoint fetch failures and per-username insert failures are
+/// logged as warnings and otherwise ignored, so a single bad endpoint
+/// doesn't prevent seeding the rest.
+///
+/// # Errors
+///
+/// Returns an error only if the initial row-count check fails.
 pub async fn seed_db(
     pool: &sqlx::SqlitePool,
     client: reqwest::Client,
@@ -96,6 +126,13 @@ pub async fn seed_db(
     Ok(())
 }
 
+/// Fetches the list of usernames from a chess.com player-listing
+/// `endpoint` (e.g. `"country/US/players"` or `"titled/GM"`).
+///
+/// # Errors
+///
+/// Returns an error if the request fails or the response can't be
+/// parsed as a [`PlayerList`].
 async fn get_players(
     endpoint: &str,
     client: reqwest::Client,

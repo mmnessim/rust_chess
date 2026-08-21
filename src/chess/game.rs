@@ -1,45 +1,71 @@
 use serde::{Deserialize, Serialize};
 
+/// Response body of a chess.com monthly archive endpoint: a list of games
+/// played in that month.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ManyGames {
     pub games: Vec<Game>,
 }
 
+/// A single completed game, as returned by the chess.com public API.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Game {
+    /// Link to the game on chess.com.
     pub url: String,
+    /// Full PGN (Portable Game Notation) transcript of the game.
     pub pgn: String,
+    /// Time control string, e.g. `"180+2"`.
     pub time_control: String,
+    /// Unix timestamp (seconds) of when the game ended.
     pub end_time: u64,
+    /// Whether the game was rated.
     pub rated: bool,
+    /// Move accuracy percentages for each side, if available.
     pub accuracies: Option<Accuracies>,
+    /// Compact "TCN" move encoding used internally by chess.com.
     pub tcn: String,
+    /// Unique identifier for the game.
     pub uuid: String,
+    /// Starting position of the game, in FEN.
     pub initial_setup: String,
+    /// Final position of the game, in FEN.
     pub fen: String,
+    /// Time class the game was played under (bullet, blitz, etc.).
     pub time_class: TimeClass,
+    /// Game variant, e.g. `"chess"`.
     pub rules: String,
+    /// Stats for the player with the white pieces.
     pub white: PlayerStats,
+    /// Stats for the player with the black pieces.
     pub black: PlayerStats,
+    /// ECO opening classification URL, if known.
     pub eco: Option<String>,
 }
 
+/// Per-side move accuracy percentages for a game.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Accuracies {
     pub black: f64,
     pub white: f64,
 }
 
+/// A player's rating and outcome for one side of a single game.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PlayerStats {
+    /// Player's rating at the time of the game.
     pub rating: u64,
+    /// Game result from this player's perspective, e.g. `"win"`, `"resigned"`.
     pub result: String,
+    /// URL identifying the player on the chess.com API.
     #[serde(rename = "@id")]
     pub id: String,
+    /// The player's chess.com username.
     pub username: String,
+    /// Unique identifier for the player.
     pub uuid: String,
 }
 
+/// The time class a game was played under.
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum TimeClass {
@@ -49,6 +75,8 @@ pub enum TimeClass {
     Bullet,
 }
 
+/// Response body of the chess.com "list of monthly archives" endpoint:
+/// URLs of each monthly archive available for a player.
 #[derive(Serialize, Deserialize)]
 pub struct Archives {
     pub archives: Vec<String>,

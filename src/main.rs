@@ -1,3 +1,6 @@
+//! HTTP server that serves random chess.com games and exposes a small
+//! player database backed by SQLite.
+
 use axum::{Json, Router, extract::State, routing::get};
 use reqwest::{StatusCode, header};
 
@@ -14,6 +17,8 @@ mod chess;
 mod data;
 mod state;
 
+/// Initializes the DB, seeds it, and starts the Axum server on
+/// `127.0.0.1:3000`.
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
@@ -50,11 +55,15 @@ async fn main() {
     let _ = axum::serve(listener, app).await;
 }
 
+/// Handler for `GET /`: a basic health-check/greeting endpoint.
 async fn root() -> &'static str {
     tracing::info!("/ GET");
     "Hello world"
 }
 
+/// Handler for `GET /game`: fetches a random game for a hardcoded
+/// player from the chess.com API, retrying up to `MAX_ATTEMPTS` times
+/// on failure.
 async fn game(State(state): State<AppState>) -> Result<Json<Game>, StatusCode> {
     tracing::info!("/game GET");
     const MAX_ATTEMPTS: u8 = 3;
@@ -74,6 +83,8 @@ async fn game(State(state): State<AppState>) -> Result<Json<Game>, StatusCode> {
     Err(StatusCode::BAD_GATEWAY)
 }
 
+/// Handler for `GET /dbtest`: sanity-check endpoint that returns a
+/// single row from the `players` table.
 async fn db_test(State(state): State<AppState>) -> Result<Json<Vec<Player>>, StatusCode> {
     tracing::info!("/dbtest GET");
     match sqlx::query_as::<_, Player>("SELECT * FROM players LIMIT 1")
@@ -87,6 +98,8 @@ async fn db_test(State(state): State<AppState>) -> Result<Json<Vec<Player>>, Sta
     Err(StatusCode::BAD_GATEWAY)
 }
 
+/// Builds the shared `reqwest::Client` used for chess.com API calls,
+/// with a custom `User-Agent` header set.
 fn init_client() -> reqwest::Client {
     let mut headers = reqwest::header::HeaderMap::new();
     headers.insert(
