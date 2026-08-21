@@ -1,6 +1,18 @@
+use std::error::Error;
+
 use rand::random_range;
 
-use crate::chess::game::{Archives, Game, ManyGames};
+use serde::Deserialize;
+
+use crate::{
+    chess::game::{Archives, Game, ManyGames},
+    data::db::insert,
+};
+
+#[derive(Debug, Deserialize)]
+struct PlayerList {
+    players: Vec<String>,
+}
 
 pub async fn _stats(username: &str, client: reqwest::Client) {
     let url = format!("https://api.chess.com/pub/player/{username}/stats");
@@ -47,4 +59,54 @@ pub async fn random_game(username: &str, client: reqwest::Client) -> Result<Game
     }
     let game_num = rand::random_range(0..games.len());
     Ok(games.into_iter().nth(game_num).unwrap())
+}
+
+pub async fn seed_db(
+    pool: &sqlx::SqlitePool,
+    client: reqwest::Client,
+) -> Result<(), Box<dyn Error>> {
+    let rows: u64 = sqlx::query_scalar("SELECT COUNT(*) FROM players")
+        .fetch_one(pool)
+        .await?;
+    if rows > 0 {
+        tracing::info!("Database already seeded");
+        return Ok(());
+    }
+
+    let endpoints = vec![
+        "country/US/players",
+        "country/CA/players",
+        "country/IT/players",
+        "titled/GM",
+        "titled/IM",
+        "titled/FM",
+    ];
+    for e in endpoints {
+        match get_players(e, client.clone()).await {
+            Ok(usernames) => {
+                for username in usernames {
+                    if let Err(err) = insert(&username, pool).await {
+                        tracing::warn!("failed to insert {username}: {err}");
+                    }
+                }
+            }
+            Err(err) => tracing::warn!("failed to fetch players for {e}: {err}"),
+        }
+    }
+    Ok(())
+}
+
+async fn get_players(
+    endpoint: &str,
+    client: reqwest::Client,
+) -> Result<Vec<String>, Box<dyn Error>> {
+    let url = format!("https://api.chess.com/pub/{endpoint}");
+    let players = client
+        .get(url)
+        .send()
+        .await?
+        .json::<PlayerList>()
+        .await?
+        .players;
+    Ok(players)
 }

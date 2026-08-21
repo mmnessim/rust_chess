@@ -5,4 +5,5 @@ use sqlx::prelude::FromRow;
 pub struct Player {
     pub id: i64,
     pub username: String,
+    pub active: bool,
 }

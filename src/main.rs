@@ -2,7 +2,10 @@ use axum::{Json, Router, extract::State, routing::get};
 use reqwest::{StatusCode, header};
 
 use crate::{
-    chess::{api::random_game, game::Game},
+    chess::{
+        api::{random_game, seed_db},
+        game::Game,
+    },
     data::{db::init_db, player::Player},
     state::AppState,
 };
@@ -23,6 +26,10 @@ async fn main() {
             return;
         }
     };
+
+    if let Err(e) = seed_db(&pool, client.clone()).await {
+        tracing::error!("seed_db failed: {e}");
+    }
 
     let state = AppState {
         http: client.clone(),
